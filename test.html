@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="Big5">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e養午餐系統</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>e養午餐</h1>
+    
+    <!-- 按?切? -->
+    <button onclick="showDishWeight()">菜色重量</button>
+    <button onclick="showNutritionalContent()">總營養成分重量</button>
+
+    <canvas id="myChart" width="40" height="20"></canvas>
+
+    <script>
+        // 假?的菜??据
+        function color_function(weight,maximal_weight,minmum_weight) {
+            return weight > maximal_weight 
+                ? 'rgba(255,0,0, 0.2)'  // ?量 
+                : weight < minmum_weight 
+                ? 'rgba(0,0,225, 0.2)'  // 不足
+                : 'rgba(0,255,0, 0.2)'; // 正常
+        }
+        const menuData = [
+            { dish: "白飯", weight:  160, calories: 183, protein: 10, fat: 5 ,carb:100,minmum_weight:50,maximal_weight:150,color:''},
+            { dish: "雞胸肉", weight: 36, calories: 119, protein: 50, fat: 20 ,carb:5,minmum_weight:50,maximal_weight:80,color:''},
+            { dish: "高麗菜", weight: 100, calories: 25, protein: 0, fat: 0 ,carb:0,minmum_weight:50,maximal_weight:150,color:''}
+        ];
+        // 初始化?表?据
+        let chartData = {
+            labels: menuData.map(item => item.dish),
+            datasets: [{
+                label: '菜色重量 (克)',
+                data: menuData.map(item => item.weight),
+                backgroundColor: menuData.map(item => color_function(item.weight, item.maximal_weight, item.minmum_weight)),
+                borderColor: 'rgba(255,0,0, 1)',
+                borderWidth: 0.5
+            }]
+        };
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'bar',
+            data: chartData,
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // 切?到菜色重量
+        function showDishWeight() {
+            myChart.data.datasets = myChart.data.datasets.slice(0, 1);
+            delete myChart.options.scales['y-axis-1']
+            myChart.data.datasets[0].label = '菜色重量 (克)';
+            myChart.data.labels = menuData.map(item => item.dish);
+            myChart.data.datasets[0].data = menuData.map(item => item.weight);
+            menuData.forEach(item=>{
+                item.color=color_function(item.weight,item.maximal_weight,item.minmum_weight);
+            })
+            myChart.data.datasets[0].backgroundColor=menuData.map(item=>item.color);
+            myChart.update();
+        }
+        function showNutritionalContent() {
+            // 初始化 totalNutrients ??，保存每???成分的?和
+            const totalNutrients = [0, 0, 0, 0]; // [卡路里?和, 蛋白??和, 脂肪?和, 碳水化合物?和]
+
+            // ?算卡路里的?和
+            totalNutrients[0] = menuData.reduce((sum, item) => sum + (item.weight / 100) * (item.calories), 0);
+
+            // ?算蛋白?的?和
+            totalNutrients[1] = menuData.reduce((sum, item) => sum + (item.weight / 100) * (item.protein), 0);
+
+            // ?算脂肪的?和
+            totalNutrients[2] = menuData.reduce((sum, item) => sum + (item.weight / 100) * (item.fat), 0);
+
+            // ?算碳水化合物的?和
+            totalNutrients[3] = menuData.reduce((sum, item) => sum + (item.weight / 100) * (item.carb), 0);
+
+            // ?置??
+            myChart.data.labels = ['卡路里', '蛋白?', '脂肪', '碳水化合物'];
+
+            // ??生成每???成分的?色
+            const calorieColor = totalNutrients[0] > 720 ? 'rgba(255,0,0, 0.2)' : totalNutrients[0] > 620 ? 'rgba(0,255,0, 0.2)' : 'rgba(0,0,225, 0.2)';
+            const proteinColor = totalNutrients[1] > 29.7 ? 'rgba(255,0,0, 0.2)' : totalNutrients[1] > 24.3 ? 'rgba(0,255,0, 0.2)' : 'rgba(0,0,225, 0.2)';
+            const fatColor = totalNutrients[2] > 24.2 ? 'rgba(255,0,0, 0.2)' : totalNutrients[2] > 19.8 ? 'rgba(0,255,0, 0.2)' : 'rgba(0,0,225, 0.2)';
+            const carbColor = totalNutrients[3] > 75 ? 'rgba(255,0,0, 0.2)' : totalNutrients[3] > 50 ? 'rgba(0,255,0, 0.2)' : 'rgba(0,0,225, 0.2)';
+            const dynamicColors = [calorieColor, proteinColor, fatColor, carbColor];
+
+            // 更新?据集
+            myChart.data.datasets[0].label = '營養成分（克）'; // 使用重量
+            myChart.data.datasets[0].data = [null, totalNutrients[1], totalNutrients[2], totalNutrients[3]]; // 其他的使用重量?据
+            myChart.data.datasets[0].backgroundColor = dynamicColors; // ?置背景色
+
+            // ?建第二??据集用于卡路里（使用第二? Y ?）
+            myChart.data.datasets[1] = {
+                label: '卡路里（kcal）',
+                data: [totalNutrients[0], null, null, null], // 只有卡路里有值
+                backgroundColor: ['rgba(255, 0, 0, 0.2)'], // 卡路里?色
+                yAxisID: 'y-axis-1' // 使用第二? Y ?
+            };
+
+            // 配置? Y ?
+            myChart.options.scales = {
+                y: {
+                    beginAtZero: true, // 默?的 Y ?（?在?示重量，卡路里在右?）
+                    position: 'right'  // ?重量的 Y ?放置在右?
+                },
+                'y-axis-1': {
+                    type: 'linear',
+                    position: 'left',  // ?卡路里的 Y ?放置在左?
+                    beginAtZero: true,
+                }
+            };
+
+            // 更新?表
+            myChart.update();
+        }
+    </script>
+</body>
+</html>
