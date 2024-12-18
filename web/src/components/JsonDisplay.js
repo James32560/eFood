@@ -4,7 +4,7 @@ const JsonDisplay = ({ receivedData }) => {
   return (
     <div>
       {receivedData ? (
-        <pre>{JSON.stringify(receivedData, null, 2)}</pre>
+        <pre>{receivedData.weight}</pre>
       ) : (
         <p>No data received yet.</p>
       )}
